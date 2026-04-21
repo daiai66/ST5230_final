@@ -1,0 +1,218 @@
+% ============================================================
+% Appendix 3: Implementation Details
+% Covers: Bootstrap Analysis, Bayesian GLM Decision Analysis,
+%         and Ethical Reasoning Scoring (AUT-inspired)
+% ============================================================
+
+\section*{Appendix 3: Implementation Details}
+\addcontentsline{toc}{section}{Appendix 3: Implementation Details}
+
+\subsection*{A3.1 Bootstrap Analysis}
+
+\paragraph{Data loading and preprocessing.}
+Nine JSON response matrices are loaded (three models $\times$ three responsibility levels:
+\texttt{neutral}, \texttt{not\_responsible}, \texttt{responsible}), each containing
+280 records.  The model identity is inferred from the filename (\texttt{doubao},
+\texttt{gemini}, \texttt{openai}).  Each record's \texttt{content} field is parsed with a
+regular expression to extract the binary decision variable:
+
+\begin{equation}
+    y_{ij} = \begin{cases}
+        1 & \text{if DECISION contains ``SWITCH''} \\
+        0 & \text{if DECISION contains ``NO\_SWITCH'' or ``STAY''} \\
+        \text{NaN} & \text{if no valid token is found (excluded)}
+    \end{cases}
+\end{equation}
+
+Records where $y_{ij}$ cannot be determined are discarded before analysis.
+
+\paragraph{Baseline definition.}
+The per-model baseline is the pool of observations satisfying
+$\text{responsibility} = \texttt{neutral}$ \emph{and} $\text{role} = \texttt{role\_A}$,
+collected across all dilemmas.  All bootstrap contrasts are expressed as deviations from this
+anchor, yielding the $\Delta P(\text{SWITCH})$ metric defined in Section~4.
+
+\paragraph{Bootstrap procedure.}
+For each cell $(m, s, r)$ --- model $m$, responsibility $s$, role $r$ --- the contrast
+$\Delta P = \hat{P}_{m,s,r} - \hat{P}_{m,\texttt{neutral},\texttt{role\_A}}$ is estimated
+via non-parametric bootstrap with $B = 500$ iterations (seed 42).  In each iteration $b$:
+
+\begin{enumerate}[noitemsep]
+    \item Draw $n_x = |\text{cell}|$ observations \emph{with replacement} from the cell,
+          compute $\bar{x}^{(b)}$.
+    \item Draw $n_y = |\text{baseline}|$ observations \emph{with replacement} from the
+          baseline pool, compute $\bar{y}^{(b)}$.
+    \item Record $\Delta^{(b)} = \bar{x}^{(b)} - \bar{y}^{(b)}$.
+\end{enumerate}
+
+The 95\% CI is the empirical percentile interval
+$[\hat{Q}_{0.025},\,\hat{Q}_{0.975}]$ over the 500 draws.
+A cell is declared \textbf{significant} when the CI strictly excludes zero; the direction
+indicator is $\uparrow$ (positive effect), $\downarrow$ (negative effect), or
+\texttt{ns} (non-significant).  Results are saved to
+\texttt{bootstrap\_diff\_vs\_baseline.csv}.
+
+\paragraph{Visualisation.}
+For each model, a violin plot is generated over the 21 bootstrap distributions
+(7 roles $\times$ 3 responsibility levels).  Violins are grouped into three shaded bands
+(Neutral / Not Responsible / Responsible); significant cells are marked with a red star
+($*$) above the violin body.  IQR boxes and median dots are superimposed on each violin.
+
+% ============================================================
+\subsection*{A3.2 Decision Analysis: Binomial Bayesian Mixed GLM}
+
+\paragraph{Model specification.}
+Let $y_i \in \{0,1\}$ denote the binary SWITCH decision for observation $i$.  We fit a
+Binomial Bayesian Mixed GLM using \texttt{statsmodels.BinomialBayesMixedGLM}:
+
+\begin{equation}
+    \text{logit}\bigl(\Pr(y_i = 1)\bigr)
+    = \mathbf{x}_i^{\top}\boldsymbol{\beta} + \mathbf{z}_i^{\top}\mathbf{u},
+    \quad \mathbf{u} \sim \mathcal{N}(\mathbf{0},\,\sigma^2_{\text{model}}\mathbf{I})
+\end{equation}
+
+\noindent where:
+\begin{itemize}[noitemsep]
+    \item \textbf{Fixed effects} $\boldsymbol{\beta}$: main effects and all pairwise
+          interactions of $\text{responsibility}$ (Treatment baseline:
+          \texttt{neutral}) $\times$ $\text{role}$ (Treatment baseline:
+          \texttt{role\_A}).
+    \item \textbf{Random effect}: model-level random intercept
+          $\mathbf{u} \sim \mathcal{N}(\mathbf{0},\,\sigma^2_{\text{model}}\mathbf{I})$,
+          fitted via MAP estimation (\texttt{fit\_map}).
+\end{itemize}
+
+Posterior means and standard deviations of all parameters are extracted from the MAP
+summary.  Approximate 95\% credible intervals are $\hat{\mu} \pm 1.96\,\hat{\sigma}$; a
+parameter is considered distinguishable from zero when the interval excludes zero.
+
+\paragraph{Posterior visualisation.}
+Posterior distributions are displayed as scaled Gaussian density curves
+$\mathcal{N}(\hat{\mu},\,\hat{\sigma}^2)$ arranged in four groups:
+\emph{Intercept}, \emph{Responsibility (main)}, \emph{Role (main)}, and
+\emph{Resp $\times$ Role (interaction)}.  Log-SD variance parameters are shown separately.
+A red dashed horizontal line at zero marks the null for fixed-effect panels.
+
+\paragraph{Residual diagnostics.}
+Pearson residuals are computed as
+$r_i = (y_i - \hat{p}_i)\,/\,\sqrt{\hat{p}_i(1-\hat{p}_i)}$
+and inspected via four diagnostic panels: (i) Pearson residuals vs.\ fitted probabilities,
+(ii) residual histogram, (iii) mean raw residual by role, and (iv) mean raw residual by
+responsibility.  Cells with $|\bar{r}| > 0.05$ are flagged in red.
+
+An \emph{optimised} model augments the random-effect structure with a dilemma-level random
+intercept when a \texttt{dilemma} column is present in the data, reducing the Pearson
+$|r|>2$ outlier rate.
+
+% ============================================================
+\subsection*{A3.3 Variance Decomposition via Bayesian VB and NUTS Sampling}
+
+\paragraph{Random-effect design.}
+To decompose outcome variance across experimental factors, two separate Bayesian
+models are fitted, one for each outcome:
+
+\begin{itemize}[noitemsep]
+    \item \textbf{Decision} ($y^{\text{dec}} \in \{0,1\}$): Binomial Bayesian Mixed GLM
+          with intercept-only fixed effect.
+    \item \textbf{Ethical Reasoning} ($y^{\text{rea}} \in \mathbb{Z}^+$): Poisson Bayesian
+          Mixed GLM with intercept-only fixed effect, where $y^{\text{rea}}$ is the word
+          count of the REASONING field (clipped to $\geq 1$).
+\end{itemize}
+
+Both models include four random-effect components specified as indicator matrices:
+Role ($\mathbf{Z}_{\text{role}}$), Responsibility ($\mathbf{Z}_{\text{resp}}$),
+Model $\times$ Role ($\mathbf{Z}_{m \times r}$), and
+Model $\times$ Responsibility ($\mathbf{Z}_{m \times s}$).
+Variance parameters are modelled as $\log\sigma$; MAP/VB estimates are obtained via
+\texttt{fit\_vb}.
+
+\paragraph{ICC computation.}
+The intraclass correlation for component $k$ is:
+\begin{equation}
+    \text{ICC}_k = \frac{\sigma^2_k}{\sum_{k'}\sigma^2_{k'} + \sigma^2_{\varepsilon}}
+    \times 100\%
+\end{equation}
+
+where the latent residual variance is:
+\begin{equation}
+    \sigma^2_{\varepsilon} =
+    \begin{cases}
+        \pi^2/3 \approx 3.290 & \text{(Bernoulli logistic)} \\[4pt]
+        \ln\!\bigl(1 + 1/\bar{y}^{\text{rea}}\bigr) & \text{(Poisson log)}
+    \end{cases}
+\end{equation}
+
+\paragraph{Monte Carlo 95\% CIs (VB path).}
+$N = 50{,}000$ samples are drawn from the VB posterior of each log-SD parameter
+$\log\hat{\sigma}_k \sim \mathcal{N}(\hat{\mu}_k,\,\hat{\sigma}^{\text{VB}}_k)$.
+The resulting $\sigma^2_k$ samples are converted to ICC percentages; the 2.5th and 97.5th
+percentiles form the reported 95\% CI.
+
+\paragraph{NUTS sampling (PyMC path).}
+As a cross-validation, a hierarchical PyMC model is fitted with the same four random
+effects and HalfNormal($\sigma=1$) priors on the SD parameters.  NUTS is run with
+$4 \times 2{,}000$ post-warmup draws (1,000 tuning steps, \texttt{target\_accept}$=0.9$,
+seeds 42 and 43 for Decision and Reasoning respectively).  R-hat diagnostics
+($\hat{R} < 1.01$ for all $\sigma$ parameters) confirm chain convergence.
+ICC tables are derived from the posterior $\sigma^2$ samples in the same way as the
+Monte Carlo VB path.
+
+% ============================================================
+\subsection*{A3.4 Ethical Reasoning Scoring (AUT-Inspired)}
+
+\paragraph{Metric definition.}
+Ethical reasoning richness is quantified as the number of \textbf{valid, semantically
+distinct ideas} per response --- inspired by the \emph{fluency} dimension of the
+Alternative Uses Task (AUT; Organisciak et al., 2025).  A valid, semantically distinct idea
+is defined as:
+
+\begin{quote}
+    A self-contained argument, consideration, or ethical claim that is conceptually
+    different from all others in the same response.  Mere restatements, paraphrases, or
+    elaborations of the same point count as ONE idea.  Purely rhetorical filler
+    (\emph{``this is a complex issue''}) does not count.
+\end{quote}
+
+\noindent Examples of distinct ideas in trolley-problem reasoning:
+\begin{itemize}[noitemsep]
+    \item \emph{``The 20\% failure risk changes the expected outcome calculus.''}
+          (probabilistic consequence)
+    \item \emph{``Actively causing harm is morally worse than allowing harm.''}
+          (act/omission distinction)
+    \item \emph{``High responsibility requires avoiding direct culpability.''}
+          (duty/accountability)
+    \item \emph{``Saving more lives respects the equal worth of persons.''}
+          (fairness/equal value)
+\end{itemize}
+
+\paragraph{LLM-as-judge pipeline.}
+Each response's REASONING field is extracted and submitted to \textbf{Claude Opus 4.6}
+(\texttt{claude-opus-4-6}) via the Anthropic Messages API with the following
+configuration:
+
+\begin{itemize}[noitemsep]
+    \item \texttt{max\_tokens}: 256; \texttt{temperature}: 0.7
+    \item \texttt{system}: expert evaluator prompt defining the counting rule (above)
+    \item \texttt{user}: REASONING text prefaced with the model's binary decision as context
+    \item Expected output: a single integer (bare count, no explanation)
+\end{itemize}
+
+The judge's response is parsed with a regular expression extracting the first integer
+token; records returning no parseable integer are excluded from aggregate statistics
+(failure rate $<1\%$).  API calls are serialised with a 1-second inter-request delay to
+respect rate limits.
+
+\paragraph{Output format.}
+Scored results are written to
+\texttt{result/idea\_scores/scored\_\{source\}\_\{timestamp\}.json}, containing:
+\texttt{source\_file}, \texttt{model\_judge}, \texttt{metric},
+\texttt{scored\_at}, \texttt{mean\_idea\_count}, \texttt{n\_scored},
+\texttt{n\_total}, and the full \texttt{records} list with per-record \texttt{idea\_count}.
+Across 2,502 valid responses, the overall mean idea count is $\bar{c} = 3.598$
+(range $[2.0,\,5.0]$).
+
+\paragraph{Use in variance decomposition.}
+Idea-count scores are aggregated per $(m, s, r)$ cell and entered as the dependent
+variable in the Poisson Bayesian Mixed GLM described in Appendix~A3.3, enabling a
+parallel variance decomposition for reasoning richness alongside the binary decision
+outcome.

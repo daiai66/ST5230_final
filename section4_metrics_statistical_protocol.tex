@@ -1,0 +1,180 @@
+\section{Metrics and Statistical Protocol}
+
+\subsection{Evaluation Metrics}
+
+\subsubsection{Primary Metric: Switch Rate as a Role-Level Score}
+
+The principal evaluation quantity is the \textbf{switch rate} $\hat{P}(\text{SWITCH})$: the
+fraction of $n = 40$ repeated trials in which a model issues a SWITCH decision under a given
+role--responsibility condition.  In the LLM-ranking framing adopted here, each role assignment
+acts as a \emph{system-prompt variant}, and $\hat{P}$ plays the role of a \textbf{win rate}
+--- the proportion of trials on which the variant produces the target response class.  The
+cell-level score is
+
+\begin{equation}
+    \hat{P}_{mrs} = \frac{1}{40}\sum_{j=1}^{40} y_{ij}, \quad y_{ij} \in \{0,1\},
+    \quad 1 = \text{SWITCH}
+\end{equation}
+
+where $m$ indexes model, $r$ role, and $s$ responsibility level.  Because the three models
+carry heterogeneous intrinsic switching tendencies --- Doubao baseline 1.000, OpenAI 0.675,
+Gemini 0.250 --- raw $\hat{P}$ values are not directly comparable across models.
+
+\subsubsection{Ranking Contrast Metric: \texorpdfstring{$\Delta P(\text{SWITCH})$}{DeltaP}}
+
+To rank roles \emph{within} each model on a common scale, we define the within-model
+deviation
+
+\begin{equation}
+    \Delta P_{mrs} = \hat{P}_{mrs} - \hat{P}_{m,\,\text{neutral},\,\text{role\_A}}
+\end{equation}
+
+Role\_A (Neutral Analyst, neutral responsibility) serves as the per-model anchor; $\Delta P$
+measures how far each condition displaces the model from its unconstrained baseline.  A
+positive $\Delta P$ means the role raises switching; negative means it suppresses.  The
+observed range is $[-1.00,\,+0.75]$.  Under the neutral responsibility condition, the seven
+$\Delta P$ values define a \textbf{role ranking} for each model --- an ordered list of
+ethical personas by their tendency to elicit SWITCH decisions.
+
+\subsubsection{Model-Level Ranking Metrics}
+
+While $\hat{P}$ and $\Delta P$ rank \emph{roles within} a model, comparing \emph{models
+against each other} requires two complementary model-level scores.
+
+\paragraph{Aggregate Switch Score $\bar{S}_m$.}
+The aggregate switch score summarises a model's overall moral tendency across all seven
+roles under the neutral responsibility condition:
+
+\begin{equation}
+    \bar{S}_m = \frac{1}{7}\sum_{r=1}^{7}\hat{P}_{m,\,r,\,\text{neutral}}
+\end{equation}
+
+$\bar{S}_m$ is the model's mean win rate on the task when persona framing is present but
+no accountability cue is applied.  A higher $\bar{S}_m$ indicates a stronger intrinsic
+pro-switch disposition.  The ranking is: OpenAI ($\bar{S} = 0.761$) $>$ Doubao
+($\bar{S} = 0.675$) $>$ Gemini ($\bar{S} = 0.207$).
+
+\paragraph{Steerability Score $\eta_m$.}
+The steerability score measures how much the role assignment can redirect the model's
+decisions, expressed as the cross-role variance of $\hat{P}$ as a proportion of the
+theoretical maximum ($\sigma^2_{\max} = 0.25$):
+
+\begin{equation}
+    \eta_m = \frac{1}{0.25}\cdot\frac{1}{7}\sum_{r=1}^{7}
+             \bigl(\hat{P}_{m,r,\text{neutral}} - \bar{S}_m\bigr)^{2}
+\end{equation}
+
+$\eta_m \in [0,1]$; a value near 1 means role framing produces near-maximal dispersion (half
+the roles at 0, half at 1).  The ranking is: Doubao ($\eta = 0.525$) $>$ Gemini
+($\eta = 0.300$) $>$ OpenAI ($\eta = 0.123$).
+
+The two dimensions are inversely ordered: OpenAI ranks first on overall switch tendency but
+last on steerability, while Doubao ranks first on steerability but second on tendency.  This
+trade-off is substantively meaningful --- a high-$\bar{S}$ model has a strong baseline
+prior that role framing struggles to override.
+
+\subsubsection{Secondary Metric: Reasoning Richness (Idea Count)}
+
+Beyond the binary decision, each response is assigned an \textbf{idea-count score} by Claude
+Opus 4.6 (LLM-as-judge): the number of distinct, non-redundant ethical arguments present in
+the free-text reasoning.  Across 2,502 valid responses the distribution has mean 3.598 and
+range $[2.0,\,5.0]$, estimated by a linear mixed-effects model (REML intercept $= 3.597$,
+SE $= 0.105$).  This metric captures whether a role or responsibility framing changes \emph{how
+richly} the model reasons, independently of its binary verdict.
+
+%---------------------------------------------------------------
+\subsection{Statistical Analysis}
+
+\subsubsection{Resampling: Non-Parametric Bootstrap}
+
+All uncertainty estimates are obtained by \textbf{non-parametric bootstrap} with $B = 500$
+iterations (seed 42).  For a target condition $(m, d, s, r)$, each iteration $b$ draws
+$n = 40$ observations with replacement and computes the cell mean $\hat{P}^{(b)}$.  For
+model-level aggregate scores, the bootstrap resamples each of the model's cells
+independently and averages:
+
+\begin{equation}
+    \bar{S}^{(b)}_m = \frac{1}{|C_m|}\sum_{c \in C_m} \hat{P}^{(b)}_c
+\end{equation}
+
+where $C_m$ is the set of conditions evaluated for model $m$.  The procedure yields a
+bootstrap distribution of 500 values per quantity, from which CIs and reversal
+probabilities are derived.
+
+\subsubsection{Uncertainty: Bootstrap Confidence Intervals}
+
+The \textbf{95\% CI} for any quantity is the empirical percentile interval
+$[\hat{Q}_{0.025},\,\hat{Q}_{0.975}]$ of the 500 bootstrap draws.  For cell-level scores,
+a condition is declared significant when its CI strictly excludes the model's baseline
+($\Delta P$ CI excludes zero).  For model-level aggregate scores, two models are declared
+reliably ordered when their $\bar{S}^{(b)}$ distributions do not overlap at the 95\% level.
+
+\subsubsection{Ranking Stability}
+
+Model ranking stability is evaluated against two sources of variation treated at equal
+weight: \emph{sampling noise} (stochastic draws within a fixed condition) and
+\emph{condition variation} (shifting dilemma, responsibility, or role --- none of which is
+privileged over the others).  The neutral-responsibility $\times$ neutral-role cell serves
+as the reference baseline for computing $\Delta P$ but does not receive special weight in
+the ranking assessment.
+
+\paragraph{Rank variance.}
+For each bootstrap iteration $b$, model $m$ is assigned an aggregate score
+$\bar{S}^{(b)}_m$ by resampling all its condition cells and averaging.  The rank of $m$
+across the $B = 500$ iterations defines a rank distribution; its standard deviation
+$\text{SD}(\text{rank}_m)$ quantifies how consistently model $m$ occupies a given
+position.  A $\text{SD} \approx 0$ indicates a perfectly stable rank; a large SD indicates
+susceptibility to rank shifts driven by sampling noise or condition weighting.
+
+\paragraph{Probability of rank reversal.}
+For any pair of models $(m_1, m_2)$, the empirical reversal probability is
+
+\begin{equation}
+    \Pr\!\bigl[\bar{S}^{(b)}_{m_1} < \bar{S}^{(b)}_{m_2}\bigr]
+    = \frac{1}{B}\sum_{b=1}^{B}
+      \mathbf{1}\!\bigl[\bar{S}^{(b)}_{m_1} < \bar{S}^{(b)}_{m_2}\bigr]
+\end{equation}
+
+A pair is flagged as reversal-susceptible when this probability lies in $(0.05, 0.95)$,
+i.e.\ when neither ordering dominates at the 90\% level.  The Gemini rank-3 position is
+not reversal-susceptible against either competitor under any condition slice.  The
+OpenAI--Doubao rank-1/2 pair is susceptible under the not-responsible slice
+($\bar{S}$ gap $= 0.003$) and across Dilemmas~2\&3 where all three models compress into
+a 0.044-wide band.
+
+\subsubsection{Variance Decomposition for Reasoning Richness}
+
+To attribute variation in idea-count scores to experimental factors, we fit a fully crossed
+\textbf{linear mixed-effects model} (REML) with random effects for model, role,
+responsibility, and their pairwise interactions.  The intraclass correlation (ICC), validated
+by 200-iteration bootstrap (200/200 converged), is reported in Table~\ref{tab:icc}.
+
+\begin{table}[h]
+\centering
+\caption{Variance components and ICC for idea-count scores (bootstrap 95\% CIs in brackets).}
+\label{tab:icc}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lrrl}
+\hline
+\textbf{Component} & $\hat{\sigma}^2$ & \textbf{ICC} & \textbf{95\% CI} \\
+\hline
+Model ($\alpha_m$)            & 0.0168 & 4.69\%          & $[2.32\%,\;22.87\%]$ \\
+Role ($\beta_r$)              & 0.0078 & 2.17\%          & $[0.91\%,\;10.48\%]$ \\
+Responsibility ($\gamma_s$)   & 0.0324 & \textbf{9.02\%} & $[2.66\%,\;16.50\%]$ \\
+Model $\times$ Role           & 0.0028 & 0.79\%          & $[0.00\%,\;22.41\%]$ \\
+Model $\times$ Responsibility & 0.0132 & 3.68\%          & $[0.05\%,\;14.55\%]$ \\
+Role $\times$ Responsibility  & 0.0024 & 0.67\%          & $[0.13\%,\;\phantom{0}2.65\%]$ \\
+Within ($\varepsilon$)        & 0.2835 & 78.99\%         & $[27.21\%,\;80.96\%]$ \\
+\hline
+\textbf{Total}                & 0.3589 & 100\%           & --- \\
+\hline
+\end{tabular}
+\end{table}
+
+Responsibility is the dominant between-condition source of reasoning variation
+(ICC $= 9.02\%$), while within-condition sampling noise accounts for 79\%, confirming that
+$n = 40$ trials per cell is the minimum adequate sample for stable inference on the binary
+primary metric.
+
+
+

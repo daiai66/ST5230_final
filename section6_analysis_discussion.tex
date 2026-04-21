@@ -1,0 +1,48 @@
+\section{Analysis and Discussion}
+
+\subsection{What the Results Imply}
+
+Role framing acts as a latent steering mechanism: assigning an ethical persona shifts a
+model's binary moral choice without any explicit verdict instruction, with cross-role
+variance reaching up to 52.5\% of the theoretical maximum (Doubao, Dilemma~1).
+Susceptibility to this steering is itself a model-level property --- Doubao is the most
+redirectable, OpenAI the least --- and the direction of the responsibility effect reverses
+across models, indicating that ``accountability'' is not a semantically stable cue.
+
+\subsection{Failure Cases}
+
+\subsubsection{Non-Monotone Responsibility Effect (OpenAI, Role C)}
+
+OpenAI's Deontological Thinker traces the trajectory $\hat{P} = 0.550 \to 0.275 \to
+0.925$ across neutral, not-responsible, and responsible conditions --- the only
+non-monotone pattern among all 63 cells. By deontological logic, bearing explicit
+responsibility should \emph{reinforce} the categorical prohibition on actively harming one
+person; instead it nearly eliminates reluctance to switch. The 95\% CI for the responsible
+cell $[0.825, 1.000]$ confirms this is not a sampling artefact but a systematic overriding
+of the role's normative content by a generic pro-intervention heuristic.
+
+\subsubsection{Persona Reversal Across Dilemma Types (Gemini, Roles E and G)}
+
+Under neutral responsibility, Gemini's Buddhist Thinker and Engineer rank among the two
+\emph{lowest}-switching roles in Dilemma~1 ($\hat{P} = 0.075$ and $0.275$). In
+Dilemmas~2 and~3 the same prompts produce the two \emph{highest} non-ceiling rates
+($\hat{P} = 0.487$ and $0.787$, upward shifts of $+0.412^{*}$ and $+0.512^{*}$). The
+rank order of these two personas fully inverts between dilemma types, showing that their
+role effects are dilemma-contingent rather than stable trait-level tendencies.
+
+\subsubsection{Directional Disagreement on Christian Framing (Role D)}
+
+The Christian Thinker prompt emphasises compassion, dignity, and stewardship. Under
+neutral responsibility it produces $\Delta P = -0.525^{*}$ for Doubao and $-0.225^{*}$
+for Gemini (both suppressive), yet $+0.300^{*}$ for OpenAI (elevating switching to
+$\hat{P} = 0.975$). The same semantic content resolves to opposite moral verdicts across
+models, exposing how model-specific value weighting arbitrates ambiguous ethical vocabulary.
+
+\subsection{Practical Implications}
+
+Role prompting cannot be treated as a model-agnostic alignment tool: a framing that
+reliably instils precautionary norms in one model may produce the opposite effect in
+another, as demonstrated by the Christian role and the responsibility reversal for OpenAI.
+Designers deploying persona-based moral steering in high-stakes applications must validate
+the direction and magnitude of each role effect empirically on the target model before
+deployment.
