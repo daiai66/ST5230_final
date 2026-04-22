@@ -17,8 +17,9 @@ from openai_api_test import (
 def run_matrix_experiment(
     num_samples_per_cell: int = 40,
     dilemma_index: int = 0,
+    resp_key: str = "neutral",
     inter_call_delay: float = 2.0,
-    output_prefix: str = "openai_matrix_neutral",   
+    output_prefix: str = "openai_matrix",
 ) -> List[Dict]:
     print("=" * 90)
     print("OpenAI Matrix Experiment (Responsibility × Role × Samples)")
@@ -36,7 +37,7 @@ def run_matrix_experiment(
         dilemma_index = 0
 
     selected_dilemma = DILEMMAS[dilemma_index]
-    selected_resp_keys = ["neutral"]
+    selected_resp_keys = [resp_key]
     total_calls = len(selected_resp_keys) * len(ROLES) * num_samples_per_cell
 
     print(f"Model: {client.model}")
@@ -116,11 +117,13 @@ def run_matrix_experiment(
 
 
 if __name__ == "__main__":
-    for i in range(1, 3):
-        dilemma_name = DILEMMAS[i]["id"]
-        print(f"\nRunning: neutral x all 7 roles (40 samples each) — {dilemma_name}")
-        run_matrix_experiment(
-            num_samples_per_cell=40,
-            dilemma_index=i,
-            output_prefix=f"openai_matrix_neutral_{dilemma_name}",
-        )
+    for dilemma_idx in range(len(DILEMMAS)):
+        dilemma_id = DILEMMAS[dilemma_idx]["id"]
+        for rk in RESPONSIBILITY:
+            print(f"\nRunning: {rk} x all 7 roles x 40 samples — {dilemma_id}")
+            run_matrix_experiment(
+                num_samples_per_cell=40,
+                dilemma_index=dilemma_idx,
+                resp_key=rk,
+                output_prefix=f"openai_matrix_{rk}_{dilemma_id}",
+            )

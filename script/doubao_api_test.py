@@ -371,9 +371,18 @@ def build_user_prompt(responsibility: Dict, role: Dict, dilemma: Dict) -> str:
     )
 
 
-def run_small_sample_experiment() -> Optional[List[Dict]]:
+def run_small_sample_experiment(num_samples: int = 1) -> Optional[List[Dict]]:
+    """Smoke-test the full 3 dilemmas × 3 responsibility × 7 roles grid.
+
+    Runs num_samples calls per cell (default 1) to verify every combination
+    reaches the API without errors before launching the full matrix run.
+    """
+    total_cells = len(DILEMMAS) * len(RESPONSIBILITY) * len(ROLES)
+    total_calls = total_cells * num_samples
     print("=" * 80)
-    print("Doubao Seed 2.0 Small Sample Test")
+    print("Doubao Full-Grid Smoke Test")
+    print(f"  {len(DILEMMAS)} dilemmas × {len(RESPONSIBILITY)} resp × {len(ROLES)} roles "
+          f"× {num_samples} sample(s) = {total_calls} calls")
     print("=" * 80)
 
     try:
@@ -382,54 +391,64 @@ def run_small_sample_experiment() -> Optional[List[Dict]]:
         print(f"Initialization failed: {exc}")
         return None
 
-    selected_responsibility = RESPONSIBILITY["neutral"]
-    selected_role = ROLES["role_E"]
-
     results: List[Dict] = []
-    num_samples = 3
+    call_index = 0
 
-    for i in range(1, 3):
-        selected_dilemma = DILEMMAS[i]
-        print(f"\n--- Dilemma: {selected_dilemma['id']} ---")
-        system_prompt = build_system_prompt(selected_responsibility, selected_role)
-        user_prompt = build_user_prompt(selected_responsibility, selected_role, selected_dilemma)
+    for dilemma in DILEMMAS:
+        for resp_key, responsibility in RESPONSIBILITY.items():
+            for role_key, role in ROLES.items():
+                system_prompt = build_system_prompt(responsibility, role)
+                user_prompt = build_user_prompt(responsibility, role, dilemma)
 
-        for sample_num in range(1, num_samples + 1):
-            print(f"Sample {sample_num}/{num_samples} ...")
+                for sample_num in range(1, num_samples + 1):
+                    call_index += 1
+                    print(
+                        f"[{call_index}/{total_calls}] "
+                        f"{dilemma['id']} | {resp_key} | {role_key} | "
+                        f"sample {sample_num} ...",
+                        end=" ",
+                        flush=True,
+                    )
 
-            response = client.call_doubao(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                temperature=0.7,
-                max_tokens=3000,
-            )
+                    response = client.call_doubao(
+                        system_prompt=system_prompt,
+                        user_prompt=user_prompt,
+                        temperature=0.7,
+                        max_tokens=3000,
+                    )
 
-            results.append(
-                {
-                    "sample_num": sample_num,
-                    "responsibility": selected_responsibility["id"],
-                    "role": selected_role["id"],
-                    "dilemma": selected_dilemma["id"],
-                    **response,
-                }
-            )
+                    results.append({
+                        "call_index": call_index,
+                        "sample_num": sample_num,
+                        "dilemma": dilemma["id"],
+                        "responsibility": resp_key,
+                        "role": role_key,
+                        **response,
+                    })
 
-            if sample_num < num_samples:
-                time.sleep(2)
+                    if response.get("status") == "success":
+                        print(f"OK ({response.get('elapsed_time', 0):.2f}s)")
+                    else:
+                        print(f"FAILED ({response.get('error', 'unknown')})")
+
+                    if call_index < total_calls:
+                        time.sleep(1)
 
     output_dir = os.path.join("dataset", "responses", "raw")
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(
         output_dir,
-        f"doubao_sample_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+        f"doubao_smoke_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
     )
 
     with open(output_file, "w", encoding="utf-8") as file_obj:
         json.dump(results, file_obj, indent=2, ensure_ascii=False)
 
-    print(f"Saved to: {output_file}")
+    success = sum(1 for r in results if r.get("status") == "success")
+    print(f"\nSaved to: {output_file}")
+    print(f"Success: {success}/{total_calls}")
     return results
 
 
 if __name__ == "__main__":
-    run_small_sample_experiment()
+    run_small_sample_experiment(num_samples=1)
