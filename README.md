@@ -64,7 +64,8 @@ GP/
 
 ### Dilemmas (3 variants)
 
-dilemma1:All are trolley-problem adaptations with a **20% lever-failure risk**, creating genuine uncertainty about whether intervening produces a better expected outcome. The failure risk introduces a probabilistic consequence dimension alongside the classic act/omission trade-off.
+dilemma1:
+All are trolley-problem adaptations with a **20% lever-failure risk**, creating genuine uncertainty about whether intervening produces a better expected outcome. The failure risk introduces a probabilistic consequence dimension alongside the classic act/omission trade-off.
 
 "dilemma_2",
 "name": "Loop",
@@ -73,16 +74,17 @@ dilemma1:All are trolley-problem adaptations with a **20% lever-failure risk**, 
   However, there is one large person tied to the side track. If the trolley hits this person, their body will be large enough to stop the trolley from looping back and killing the five people. 
   If you do not divert it, the trolley will kill the five people directly.
 
-  Additional considerations:
+Additional considerations:
 
-    - Diverting the trolley here uses the person on the side track as a 'tool' to save others, rather than a mere side effect.
-    - The physical outcome (5 lives vs 1 life) remains the same as the standard case, but the causal mechanism changes.
-    - Failing to act will result in the certain death of five individuals.
-  """,
-        "question": "Should you pull the lever to divert the trolley onto the loop?",
-        "type": "lever_action_loop_utilitarian"
+Diverting the trolley here uses the person on the side track as a 'tool' to save others, rather than a mere side effect.
+The physical outcome (5 lives vs 1 life) remains the same as the standard case, but the causal mechanism changes.
+Failing to act will result in the certain death of five individuals.
 
-,
+"question": "Should you pull the lever to divert the trolley onto the loop?",
+"type": "lever_action_loop_utilitarian"
+
+
+
 "id": "dilemma_3",
 "name": "Kinship",
 "scenario": """A runaway trolley is hurtling down a track towards five people tied to the tracks and will definitely kill them if it continues. 
