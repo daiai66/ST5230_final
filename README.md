@@ -1,15 +1,18 @@
 # LLM Moral Decision-Making under Role and Responsibility Framing
-**We provide a quantitative analysis of how LLMs alter moral decision making and reason
+We provide a quantitative analysis of how LLMs alter moral decision making and reason
 ing under implicit responsibilities, roles and architectures. Our experiment leverages 3 trolley
 problems: Uncertainty-Tradeoff, The loop, Kinship Conflict and 3 models 3 responsibilities
-religious/philosophical/profession roles. Our findings reveal that gpt-4o tends to change the
+religious/philosophical/profession roles. 
+
+Our findings reveal that gpt-4o tends to change the
 moral decision but is the least steerable by roles. Doubao is the most directable while Gemini
 consistently occupies the conservative end on tendency while ranking second on steerability.
+
 We also identified the defensive reasoning mechanism and role prompts’ affecting scene. Role
 playing prompts are the primary lever for shaping what models decide, whereas the depth and
 character of their moral deliberation are largely determined by the model itself. These insights
 underscore the necessity of refining LLMs to ensure fairness and ethical alignment, leading the
-way for more trustworthy AI systems.**
+way for more trustworthy AI systems.
 ---
 
 ## Project Structure
