@@ -51,8 +51,8 @@ GP/
 | role_C | Deontological Thinker | Duties, rights, intrinsic permissibility |
 | role_D | Christian Thinker | Compassion, dignity, stewardship |
 | role_E | Buddhist Thinker | Non-harm, intention, suffering reduction |
-| role_F | Poet |
-| role_G | Engineer |
+| role_F | Poet | Poet
+| role_G | Engineer | Engineer
 
 ### Responsibility conditions (3 levels)
 
