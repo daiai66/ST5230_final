@@ -202,30 +202,19 @@ Example distinct ideas:
 
 ## Key Findings
 
-| Finding | Detail |
-|---------|--------|
+
 | Role effects | Significant ΔP shifts in most models; direction varies by ethical persona |
 | Responsibility modulation | `responsible` framing raises switch rate in some roles, suppresses in others |
 | Model heterogeneity | Models differ in baseline tendency and steerability (inversely ordered) |
 | Reasoning richness | Idea count varies independently of binary decision; responsibility is the dominant predictor |
 | Rank stability | Gemini rank-3 is stable; OpenAI–Doubao rank-1/2 susceptible under not-responsible slice |
-**Furthermore, we identified potential mechanisms to enhance defensive reasoning. A high
-accountability system setting rarely flips the final decision; however, it significantly increases the
-reasoning load and the diversity of generated ideas, effectively forcing the model into a state of
+Furthermore, we identified potential mechanisms to enhance defensive reasoning. A high accountability system setting rarely flips the final decision; however, it significantly increases the reasoning load and the diversity of generated ideas, effectively forcing the model into a state of
 self-justification.
-Our findings reveal that some models tend to change the moral decision but is the least steerable
-by roles while other models are moderate in directablity and steerability.
-Using Bayesian Mixed-Effects Models, we attribute the primary sources of variation to
-role (42.24%) followed by within-model residuals(20.84%) in decision making and within
-model(35.02%) followed by model*res (34.73%) in complexity reasoning. These findings indi
-cate that the inherent heterogeneity of LLM architectures and in-context roles are critical features
-that must be accounted for when designing LLM experiments.
-For future work, we propose two primary directions:
-Expanding Controlling Factors: Extending the scope to include universal personas and
-diverse cultural backgrounds. We aim to assess if moral reasoning remains robust across global
-identity and cultural systems. Long-text Stability: Investigating persona drift during multi-turn
-interactions to ensure consistency in extended dialogues.Future experiments will test how repeated
-pressure affects long-term character integrity.
+Our findings reveal that some models tend to change the moral decision but is the least steerable by roles while other models are moderate in directablity and steerability.
+Using Bayesian Mixed-Effects Models, we attribute the primary sources of variation to role (42.24%) followed by within-model residuals(20.84%) in decision making and within
+model(35.02%) followed by model*res (34.73%) in complexity reasoning. These findings indicate that the inherent heterogeneity of LLM architectures and in-context roles are critical features that must be accounted for when designing LLM experiments.
+For future work, we propose two primary directions: Expanding Controlling Factors: Extending the scope to include universal personas and diverse cultural backgrounds. We aim to assess if moral reasoning remains robust across global identity and cultural systems. Long-text Stability: Investigating persona drift during multi-turn
+interactions to ensure consistency in extended dialogues.Future experiments will test how repeated pressure affects long-term character integrity.
 ---**
 
 ## Requirements
